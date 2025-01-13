@@ -2,6 +2,7 @@ from shiny import reactive
 from shiny.express import input, render, ui
 from shiny.ui import page_navbar
 from shinyswatch import theme
+from shinywidgets import output_widget, render_widget
 
 from functools import partial
 
@@ -10,6 +11,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from categorical_plots import pie_chart, pie_split, bar_chart, bar_split
+from numerical_plots import create_distribution_plot
 
 ui.page_opts(
     title="Data Analysis",
@@ -94,3 +96,11 @@ with ui.nav_panel('EDA'):
             "var_num", "Select variable",
             choices=cols_numeric.tolist()
         )
+        ui.input_selectize(
+            "var_hue", "Select hue variable",
+            choices=cols_categorical.tolist()
+        )
+        @render_widget
+        def chart_num():
+            return create_distribution_plot(data, input.var_num(), input.var_hue())
+        
