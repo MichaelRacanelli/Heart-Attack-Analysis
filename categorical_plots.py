@@ -1,75 +1,96 @@
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-PALETTE = sns.color_palette('pastel')
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 def pie_chart(data, input):
-    plt.figure(figsize=(10, 7))
-    colors = PALETTE[0:len(data[input].unique())]
-    data[input].value_counts().plot.pie(
-    autopct='%1.1f%%', 
-    startangle=90, 
-    colors=colors, 
-    wedgeprops={'edgecolor': 'black'},
-    textprops={'fontsize': 12}
+    # Generate the pie chart using Plotly
+    fig = px.pie(
+        data, 
+        names=input, 
+        title=f'{input}', 
+        color_discrete_sequence=px.colors.qualitative.Pastel
     )
-    plt.title(f'{input}', fontsize=20)
-    plt.ylabel('')  # Hide the y-label
-    plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-    plt
+    fig.update_traces(
+        textinfo='percent+label', 
+        hoverinfo='label+percent',
+        pull=[0.05]*len(data[input].unique())
+    )
+    fig.update_layout(title_font_size=20)
+    return fig
 
 def pie_split(data, input, target):
-    fig, axes = plt.subplots(1, 2, figsize=(20, 7))
-
-    # Create a consistent color mapping for the categories
-    unique_categories = data[input].unique()
-    colors = PALETTE[:len(unique_categories)]
-    color_mapping = {category: color for category, color in zip(unique_categories, colors)}
-
-    # Set a single title above the entire figure
-    fig.suptitle(f'{input}', fontsize=20)
-
-    for i, (title, subset) in enumerate(data.groupby(target)):
-        # Map colors to categories in the subset
-        category_counts = subset[input].value_counts()
-        category_colors = [color_mapping[category] for category in category_counts.index]
-        
-        # Plot pie chart
-        category_counts.plot.pie(
-            autopct='%1.1f%%',
-            startangle=90,
-            colors=category_colors,
-            wedgeprops={'edgecolor': 'black'},
-            textprops={'fontsize': 12},
-            ax=axes[i]
+    # Split data into subgroups and create pie charts
+    unique_targets = data[target].unique()
+    colors = px.colors.qualitative.Pastel  # Specify a specific color sequence
+    
+    # Create a consistent color map for the unique values of the input column
+    unique_values = data[input].unique()
+    color_map = {val: colors[j % len(colors)] for j, val in enumerate(unique_values)}
+    
+    fig = make_subplots(
+        rows=1, 
+        cols=len(unique_targets), 
+        specs=[[{'type':'domain'}]*len(unique_targets)],
+        subplot_titles=[f'{target}: {val}' for val in unique_targets]
+    )
+    
+    for i, value in enumerate(unique_targets):
+        subset = data[data[target] == value]
+        fig.add_trace(
+            go.Pie(
+                labels=subset[input].value_counts().index,
+                values=subset[input].value_counts().values,
+                name=f'{target}: {value}',
+                pull=[0.05]*len(subset[input].unique()),
+                marker=dict(colors=[color_map[val] for val in subset[input].value_counts().index])
+            ),
+            row=1,
+            col=i+1
         )
-        # Set individual group titles for each pie chart
-        axes[i].set_title(f'{target}: {title}',
-                        fontsize=14, 
-                        y=-0.2,  # Move title below the pie chart
-                        loc='center')
-        axes[i].set_ylabel('')  # Hide the y-label
-        axes[i].axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle
 
-    plt.tight_layout()
-    plt
+    fig.update_layout(
+        title_text=f'{input}',
+        title_font_size=20,
+        annotations=[
+            dict(text=f'{target}: {val}', x=0.5/len(unique_targets)*(2*i+1), y=1.1, showarrow=False) 
+            for i, val in enumerate(unique_targets)
+        ]
+    )
+    return fig
 
 def bar_chart(data, input):
-    plt.figure(figsize=(10, 7))
-    sns.countplot(x=input, data=data, legend=False, palette='pastel')
-    plt.title(f'{input}', fontsize=20)
-    plt.xlabel(f'{input}')
-    plt.ylabel('Count')
-    plt.xticks(rotation=45)
-    plt
+    # Create bar chart using Plotly Express
+    value_counts = data[input].value_counts().reset_index()
+    value_counts.columns = [input, 'count']
+    fig = px.bar(
+        value_counts,
+        x=input,
+        y='count',
+        labels={input: input, 'count': 'Count'},
+        title=f'{input}',
+        color=input,  # Use the input column to assign different colors
+        color_discrete_sequence=px.colors.qualitative.Pastel
+    )
+    fig.update_layout(
+        title_font_size=20,
+        xaxis_title=f'{input}',
+        yaxis_title='Count'
+    )
+    return fig
 
 def bar_split(data, input, target):
-    plt.figure(figsize=(10, 7))
-    sns.countplot(x=input, hue=target, data=data, palette='pastel')
-    plt.title(f'{input}', fontsize=20)
-    plt.xlabel(f'{input}')
-    plt.ylabel('Count')
-    plt.xticks(rotation=45)
-    plt.legend(title=target, loc='upper right')
-    plt
+    # Create grouped bar chart using Plotly Express
+    fig = px.histogram(
+        data,
+        x=input,
+        color=target,
+        barmode='group',
+        title=f'{input}',
+        color_discrete_sequence=px.colors.qualitative.Pastel
+    )
+    fig.update_layout(
+        title_font_size=20,
+        xaxis_title=f'{input}',
+        yaxis_title='Count'
+    )
+    return fig
